@@ -1,0 +1,11 @@
+{
+  "name": "selfneckcorrector",
+  "version": "1.0.0",
+  "description": "automatic",
+  "main": "main.js",
+  "scripts": {
+    "test": "self"
+  },
+  "author": "yusei takahashi",
+  "license": "MIT"
+}
