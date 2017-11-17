@@ -46,10 +46,8 @@ app.on('activate', () => {
 
 // 非同期プロセス通信
 ipcMain.on('asynchronous-message', function( event, args ){
-    console.log(args+"hido");
-    var result = args.value * 2;
-    // レンダラプロセスへsend
-    event.sender.send('async-reply', result);
+   //マウスを無視する
+   win.setIgnoreMouseEvents(true);
 });
 
 noble.on('stateChange', function(state) {

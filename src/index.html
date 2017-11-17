@@ -10,8 +10,7 @@
   /*body{
     background-color: rgba(256,256,256,0.8);
   }*/
-
-video#vo {
+/*video#vo{
   display: none;
   position: absolute;
   top: 0; bottom: 0;
@@ -20,19 +19,34 @@ video#vo {
   width: 640px; height: 480px;
 }
 canvas#csv{
-  /*visibility: hidden;*/
+  /*visibility: hidden;
   position: absolute;
   top: 0; bottom: 0;
   left: 0; right: 0;
   margin: auto;
   width: 640px; height: 480px;
 }
+*/
+video#video, canvas#canvas{
+    	width: 640px;  /* 横幅 */
+    	height: 480px; /* 縦幅 */
+    	border: 1px solid black;
+    	overflow:hidden;
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 0; right: 0;
+      margin: auto;
+    }
+
+  canvas#canvas{
+      z-index: 10;
+    }
+
 div#memo{
   background-color: red;
   width:50px;
   display: none;
 }
-
 h1#hyouji{
   position: absolute;
   top: -20; bottom: 0;
@@ -43,59 +57,46 @@ h1#hyouji{
   margin: auto;
   text-align: center;
 }
-
   </style>
   <script>
     const {ipcRenderer} = require('electron');
     const DATA_LENGTH = 6;
+
     var cnt = 0;//データの番号
     var rawData = new Array(6);
     var alpha_val = 0;
     //video
     var video = null;
     var canvas = null;
-
     //trackerオブジェクトの宣言
     var tracker = null;
     //目の距離
-    var eyeDistance = 0;
-    //中央値
-    var eyeDistance = 0
-    var fastFlag = true;
-    //顔の
-    var eyeArray = new Array();
+    var eyeMediDistance = 0;
+    //初期化処理の分散ですよ
+    var eyeVxDistance = 0;
+    var faceRightWidth = 0;
+    var faceLeftWidth = 0;
+    var initFlag = true;
 
+    //目の距離を入れる配列
+    var eyeArray = new Array(100);
+    for(var k=0;k<eyeArray.length;k++){
+      eyeArray[k]=0;
+    }
     var ssp = null;
-    var JG = true;
     //初期化までの実行回数
     var loopCnt=0;
     //初期化の顔の実行回数をカウントする
     var faceInitCnt=0;
-
-    var h_avg = 0;
-    var h_sum = 0;
-    var height = 0;
-    var width = 0;
-    var cpData = null;
-    var zoo = null;
-    var hueAVG = 0;
-    var Fpixel = 0;
-    var kaoFlag = 1;
-    var bdy =null;
-    var ROIu = 100;
-    var ROId = 400;
-    var ROIl = 200;
-    var ROIr = 380;
-
-
-  
-    var sd = 1;
+    //顔の判定フラグ
+    var faceFlag = 0;
+    //首の判定フラグ
+    var neckFlag = true;
 
     window.addEventListener("load",function(){
         init();
         initCam();
     });
-
     ipcRenderer.on('asynchronous-message', function( event, args ){
       cnt++;
       for(var i=0;i<DATA_LENGTH;i++){
@@ -106,7 +107,6 @@ h1#hyouji{
       for(var k=0;k<DATA_LENGTH/2;k++){
         AvData[k] = AvData[k]*0.0029;
       }
-
       var xs = AvData[0].toFixed(4);
       var ys = AvData[1].toFixed(4);
       var zs = AvData[2].toFixed(4);
@@ -115,10 +115,9 @@ h1#hyouji{
       // zs = +zs;
       console.log(xs,ys,zs)
       //首の姿勢を判断する
-      JG = judge(xs,ys,zs);
+      neckFlag = judge(xs,ys,zs);
     });
-
-
+    
     //DOMーの読み込み
     function init(){
       video = document.getElementById("video");
@@ -126,20 +125,32 @@ h1#hyouji{
       ssp = document.getElementById("hyouji");
       zoo = document.getElementById("zoo");
       bdy = document.querySelector("body");
+      document.addEventListener("keydown",keydown);
+    }
+// var shiftAr = new Array(4);    
+//     function keydown(e){
+//       //shiftAr[]
+//       zoo.innerHTML = shiftAr[0]+shiftAr[1]+shiftAr[2]]+shiftAr[3];
+      
+//       if(==START_MOJI){
+//         zoo.innerHTML = "firemode";
+//         ipcRenderer.send('asynchronous-message', 'mouseIgnore');
+//       }
+//     }
+    
+    
+    function initCam(){
+      //顔認識の初期化処理
       tracker = new clm.tracker({useWebGL : true});
       tracker.init(pModel);
-
-
-    }
-
-    function initCam(){
+      console.log(tracker);
       //Canvas2D コンテキストの取得
       canvas.context = canvas.getContext("2d");
       canvas.height = canvas.clientHeight;
       canvas.width = canvas.clientWidth;
-      height = canvas.height;
-      width = canvas.width;
-
+      video.width = video.clientWidth;
+      video.height　= video.clientHeight;
+      
       navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
     	if (navigator.getUserMedia){
     		//ユーザーメディアの設定
@@ -153,25 +164,138 @@ h1#hyouji{
     				//失敗時にエラーをコンソールへ出力
     				console.log( error );
     			});
-
       }
+    }
+    
+    function storyLoop(){
+      
+      
+      
+      
+      
+      requestAnimationFrame(storyLoop);
+    }
+    
+    
       ///////////main loop/////////
     function loop(){
+        
       	//映像データの準備状況の確認
       	if (video.readyState === video.HAVE_ENOUGH_DATA ){
           //現時点で描画されているvideo要素の画像をcanvas要素に出力
           canvas.context.clearRect( 0, 0, canvas.width, canvas.height);
           var positions = tracker.getCurrentPosition();
-          if(positions){
+            
+          if(positions&&faceInitCnt<100&&initFlag){
+            tracker.draw(canvas); // 判定結果をcanvasに描画します。
+            eyeDistance = majorDistance(positions[25],positions[30]);
+            faceLeftWidth = majorDistance(positions[0],positions[33]);
+            faceRightWidth = majorDistance(positions[14],positions[33]);
+            eyeArray[faceInitCnt] = eyeDistance;
             faceInitCnt++;
-            faceinit(positions);
+            ssp.innerHTML = "顔を取得中"
+          }else{
+            ssp.innerHTML = "姿勢を正してください"
           }
-        if(fastFlag){
-          canvas.style.display= "block";
-          loopCnt++;            
-        }
+          //100回目の処理
+          if(faceInitCnt==100){
+            //カウントを1回0にしておく
+            faceInitCnt=0;
+            initFlag=false;
+            //昇順ソート
+            eyeArray.sort(function(a,b){
+              if( a < b ) return -1;
+              if( a > b ) return 1;
+              return 0;
+            });
+            //中央値を使う
+            eyeMediDistance = eyeArray[50];
+            //平均値を計算
+            var sum = 0;
+            var eyeAvgDistance = 0;
+            for(var i=0;i<100;i++){
+              sum = sum + eyeArray[i];
+            }
+            eyeAvgDistance = sum/eyeArray.length;
+            //分散を求める
+            var stSum = 0;
+            for(var j=0;j<100;j++){
+              stSum =stSum + (eyeArray[j]-eyeAvgDistance)*(eyeArray[j]-eyeAvgDistance);
+            }
+            eyeVxDistance = Math.sqrt(stSum/eyeArray.length);
+            //分散に異常があれば弾きたいここは余裕があったら追記する
+
+            //初期化しておく
+            for(var k=0;k<eyeArray.length;k++){
+              eyeArray[k]=0;
+            }
+
+          }
+      }
+      if(initFlag){
+        requestAnimationFrame(loop);
+      }else{
+        requestAnimationFrame(nextLoop);
       }
     }
+
+//顔認証後のループだよ！
+var errorCnt=0;
+var nlCnt = 0;
+function nextLoop(){
+  nlCnt++;
+  ssp.innerHTML = "nextloopなう";
+  video.style.display = "none";
+  //切り替わりの判定関数を呼び出し
+  if (video.readyState === video.HAVE_ENOUGH_DATA ){
+    canvas.context.clearRect( 0, 0, canvas.width, canvas.height);
+    var positions = tracker.getCurrentPosition();
+    if(positions){
+      tracker.draw(canvas); // 判定結果をcanvasに描画します。
+      eyeDistance = majorDistance(positions[25],positions[30]);
+      faceLeftWidth = majorDistance(positions[0],positions[33]);
+      faceRightWidth = majorDistance(positions[14],positions[33]);
+      errorCnt = 0;
+      //以下判定部
+      var deleta = eyeMediDistance - eyeDistance;
+      //deltaがマイナスのとき、画面との距離近い
+      //deletaがプラスのとき、画面との距離遠い20%で判定する
+      var parsentage = 0.2;
+      
+      if(deleta/eyeMediDistance > parsentage ){
+        //遠いよ
+        faceFlag = 2;
+      }else if(deleta/eyeMediDistance < -parsentage){
+        //近いよ
+        faceFlag = 1;
+      }else{
+        //okぽよ
+        faceFlag = 0;
+      }
+      
+    }else{
+      //人が変わるのを検知して新たに初期化する
+      errorCnt++;
+    }
+  }
+  // alpha_val = alpha_val+0.01;
+  // bdy.style.backgroundColor = "rgba(128,128,128,"+alpha_val.toFixed(2)+")";
+  
+  //よくわからないエラー1秒60以下で変えようとするとちらつく
+   changeAlpha(); 
+  
+  
+  if(errorCnt>60){
+    initFlag = true;
+    requestAnimationFrame(loop);
+  }else{
+    requestAnimationFrame(nextLoop);
+  }
+  
+  
+  
+}
+
 
 
 function majorDistance(a1,a2){
@@ -183,49 +307,41 @@ function majorDistance(a1,a2){
   return false;
 }
 
-function initFace(pos){
-  tracker.draw(canvas); // 判定結果をcanvasに描画します。
-  eyeDistance = majorDistance(pos[25],pos[30]);
-  faceLeftWidth = majorDistance(pos[0],pos[33]);
-  faceRigh = majorDistance(pos[14],pos[33]);
-
-
-
-}
 
 
 ///測定モードただ測るだけでは測るに測れないので、どうしようか
-
 function changeAlpha(){
-      if(JG==true&&kaoFlag==1){
+      
+      if(neckFlag==true&&faceFlag==0){
         ssp.innerHTML = "よい状態です。";
-      if(alpha_val>0.02){
+      if(alpha_val>0.002){
         alpha_val = alpha_val - 0.002;
         }
-      }else if(JG==true&&kaoFlag==0){
-        ssp.innerHTML = "";
+      }else if(neckFlag==true&&faceFlag==2){
+        ssp.innerHTML = "画面から遠いですよ!";
         if(alpha_val < 1.0){
-          alpha_val = alpha_val + 0.001;
+          alpha_val = alpha_val + 0.002;
           }
-      }else if(JG==true&&kaoFlag==2){
+      }else if(neckFlag==true&&faceFlag==1){
         ssp.innerHTML = "画面との距離が近すぎます。";
         if(alpha_val < 1.0){
-          alpha_val = alpha_val + 0.001;
+          alpha_val = alpha_val + 0.002;
           }
-      }else if(JG==false&&kaoFlag==1){
+      }else if(neckFlag==false&&faceFlag==0){
         ssp.innerHTML = "首の姿勢が悪いです";
         if(alpha_val < 1.0){
-          alpha_val = alpha_val + 0.001;
+          alpha_val = alpha_val + 0.002;
           }
-      }else if(JG==false){
+      }else if(neckFlag==false&&(faceFlag==1||faceFlag==2)){
         ssp.innerHTML = "最悪の状態です。";
         if(alpha_val < 1.0){
-          alpha_val = alpha_val + 0.001;
+          alpha_val = alpha_val + 0.002;
           }
       }
-
-      bdy.style.backgroundColor = "rgba(128,128,128,"+alpha_val.toFixed(2)+")";
+      bdy.style.backgroundColor = "rgba(128,128,128,"+alpha_val.toFixed(3)+")";
+      //ssp.innerHTML = bdy.style.backgroundColor;
     }
+
 
     function rawDataToAvDate(array){
       var backArray = [];
@@ -239,9 +355,8 @@ function changeAlpha(){
       return backArray;
     }
 
-
   function judge(x,y,z){
-    if((x>0.65)&&(-0.26<y)&&(y<0)&&(z<0)&&(-0.3<z)){
+    if((y>0.65)&&(-0.4<x)&&(x<0)&&(z<0.15)&&(-0.3<z)){
         return true;
     }else{
       return false;
@@ -249,13 +364,6 @@ function changeAlpha(){
 }
 
 
- 
-
-
-
-
-
- 
   </script>
 <body>
 <video id="video" autoplay></video>
