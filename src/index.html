@@ -38,7 +38,7 @@ video#video, canvas#canvas{
       margin: auto;
     }
 
-  canvas#canvas{
+canvas#canvas{
       z-index: 10;
     }
 
@@ -57,8 +57,20 @@ h1#hyouji{
   margin: auto;
   text-align: center;
 }
+
+h1#enterMes{
+  margin: auto;
+  
+  
+}
   </style>
   <script>
+    
+    //やりたいこと
+    //・ストーリーモードの実装
+    //・buttonをかっこいい今風のボタンに変更する
+    
+    
     const {ipcRenderer} = require('electron');
     const DATA_LENGTH = 6;
 
@@ -68,6 +80,7 @@ h1#hyouji{
     //video
     var video = null;
     var canvas = null;
+    var eneterM = null;
     //trackerオブジェクトの宣言
     var tracker = null;
     //目の距離
@@ -96,7 +109,34 @@ h1#hyouji{
     window.addEventListener("load",function(){
         init();
         initCam();
+       //enter(); 
     });
+    
+    //DOMーの読み込み
+    function init(){
+      video = document.getElementById("video");
+      canvas = document.getElementById("canvas");
+      enterM = document.getElementById("enterMes");
+      ssp = document.getElementById("hyouji");
+      zoo = document.getElementById("zoo");
+      bdy = document.querySelector("body");
+      mBtn = document.getElementById("Measure");
+      nBtn = document.getElementById("Normal");
+      document.addEventListener("keydown",keydown);
+      slid = document.getElementById("storySlide")
+    }
+    
+    function enter(){
+      video.style.display = "none";
+      canvas.style.display = "none";    
+      bdy.style.backgroundColor = "rgba(128,128,128,1.0)";
+      enterM.innerHTML = "Select your mode";
+      //mBtn.addEventListener("click",StoryLoop);
+      //nBtn.addEventlistener("click",initCam);      
+    }
+    
+    
+    
     ipcRenderer.on('asynchronous-message', function( event, args ){
       cnt++;
       for(var i=0;i<DATA_LENGTH;i++){
@@ -117,26 +157,18 @@ h1#hyouji{
       //首の姿勢を判断する
       neckFlag = judge(xs,ys,zs);
     });
-    
-    //DOMーの読み込み
-    function init(){
-      video = document.getElementById("video");
-      canvas = document.getElementById("canvas");
-      ssp = document.getElementById("hyouji");
-      zoo = document.getElementById("zoo");
-      bdy = document.querySelector("body");
-      document.addEventListener("keydown",keydown);
-    }
-// var shiftAr = new Array(4);    
-//     function keydown(e){
-//       //shiftAr[]
-//       zoo.innerHTML = shiftAr[0]+shiftAr[1]+shiftAr[2]]+shiftAr[3];
-      
+
+
+   function keydown(e){
+//       zoo.innerHTML = shiftAr[0]+shiftAr[1]+shiftAr[2]]+shiftAr[3];  
 //       if(==START_MOJI){
 //         zoo.innerHTML = "firemode";
 //         ipcRenderer.send('asynchronous-message', 'mouseIgnore');
 //       }
 //     }
+
+
+   }
     
     
     function initCam(){
@@ -150,6 +182,9 @@ h1#hyouji{
       canvas.width = canvas.clientWidth;
       video.width = video.clientWidth;
       video.height　= video.clientHeight;
+      
+      //マウスの無効化
+      ipcRenderer.send('asynchronous-message', 'mouseIgnore');
       
       navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
     	if (navigator.getUserMedia){
@@ -167,7 +202,7 @@ h1#hyouji{
       }
     }
     
-    function storyLoop(){
+    function StoryLoop(){
       
       
       
@@ -193,9 +228,9 @@ h1#hyouji{
             faceRightWidth = majorDistance(positions[14],positions[33]);
             eyeArray[faceInitCnt] = eyeDistance;
             faceInitCnt++;
-            ssp.innerHTML = "顔を取得中"
+            //ssp.innerHTML = "顔を取得中"
           }else{
-            ssp.innerHTML = "姿勢を正してください"
+            //ssp.innerHTML = "姿勢を正してください"
           }
           //100回目の処理
           if(faceInitCnt==100){
@@ -224,17 +259,17 @@ h1#hyouji{
             }
             eyeVxDistance = Math.sqrt(stSum/eyeArray.length);
             //分散に異常があれば弾きたいここは余裕があったら追記する
-
+            
             //初期化しておく
             for(var k=0;k<eyeArray.length;k++){
               eyeArray[k]=0;
             }
-
           }
       }
       if(initFlag){
         requestAnimationFrame(loop);
       }else{
+        
         requestAnimationFrame(nextLoop);
       }
     }
@@ -244,8 +279,9 @@ var errorCnt=0;
 var nlCnt = 0;
 function nextLoop(){
   nlCnt++;
-  ssp.innerHTML = "nextloopなう";
+  //ssp.innerHTML = "nextloopなう";
   video.style.display = "none";
+  canvas.style.display = "none";
   //切り替わりの判定関数を呼び出し
   if (video.readyState === video.HAVE_ENOUGH_DATA ){
     canvas.context.clearRect( 0, 0, canvas.width, canvas.height);
@@ -260,7 +296,7 @@ function nextLoop(){
       var deleta = eyeMediDistance - eyeDistance;
       //deltaがマイナスのとき、画面との距離近い
       //deletaがプラスのとき、画面との距離遠い20%で判定する
-      var parsentage = 0.2;
+      var parsentage = 0.3;
       
       if(deleta/eyeMediDistance > parsentage ){
         //遠いよ
@@ -288,6 +324,9 @@ function nextLoop(){
   if(errorCnt>60){
     initFlag = true;
     requestAnimationFrame(loop);
+    video.style.display = "block";
+    canvas.style.display = "block";
+    faceInitCnt = 0;
   }else{
     requestAnimationFrame(nextLoop);
   }
@@ -313,32 +352,32 @@ function majorDistance(a1,a2){
 function changeAlpha(){
       
       if(neckFlag==true&&faceFlag==0){
-        ssp.innerHTML = "よい状態です。";
+        ssp.innerHTML = "good posture";
       if(alpha_val>0.002){
         alpha_val = alpha_val - 0.002;
         }
       }else if(neckFlag==true&&faceFlag==2){
-        ssp.innerHTML = "画面から遠いですよ!";
+        ssp.innerHTML = "far";
         if(alpha_val < 1.0){
           alpha_val = alpha_val + 0.002;
           }
       }else if(neckFlag==true&&faceFlag==1){
-        ssp.innerHTML = "画面との距離が近すぎます。";
+        ssp.innerHTML = "near";
         if(alpha_val < 1.0){
           alpha_val = alpha_val + 0.002;
           }
       }else if(neckFlag==false&&faceFlag==0){
-        ssp.innerHTML = "首の姿勢が悪いです";
+        ssp.innerHTML = "neck is bad!";
         if(alpha_val < 1.0){
           alpha_val = alpha_val + 0.002;
           }
       }else if(neckFlag==false&&(faceFlag==1||faceFlag==2)){
-        ssp.innerHTML = "最悪の状態です。";
+        ssp.innerHTML = "you will become straight neck";
         if(alpha_val < 1.0){
           alpha_val = alpha_val + 0.002;
           }
       }
-      bdy.style.backgroundColor = "rgba(128,128,128,"+alpha_val.toFixed(3)+")";
+      bdy.style.backgroundColor = "rgba(0,0,0,"+alpha_val.toFixed(3)+")";
       //ssp.innerHTML = bdy.style.backgroundColor;
     }
 
@@ -356,7 +395,9 @@ function changeAlpha(){
     }
 
   function judge(x,y,z){
-    if((y>0.65)&&(-0.4<x)&&(x<0)&&(z<0.15)&&(-0.3<z)){
+    //ssp.innerHTML = x +"x"+y+"y"+ z+"z";
+    if((-0.4<x)&&(x<0)&&(z<0.35)&&(-0.35<z)){
+      //ssp.innerHTML = x +"x"+y+"y"+ z+"z";
         return true;
     }else{
       return false;
@@ -366,6 +407,10 @@ function changeAlpha(){
 
   </script>
 <body>
+ <h1 id="enterMes"></h1>
+ <!--<button id="Measure" class="chooseBtn">Measure Mode</button>
+ <button id="Normal" class="chooseBtn">Normal Mode</button>-->
+ <img id="storySlide"></img>
 <video id="video" autoplay></video>
 <canvas id="canvas"></canvas>
 <h1 id="hyouji"></h1>

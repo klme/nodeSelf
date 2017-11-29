@@ -5,8 +5,8 @@ const {app} = electron;
 const {BrowserWindow} = electron;
 const {ipcMain} = electron;
 const noble = require('noble');
-const serviceUUID ="18ee";
-//const serviceUUID="713d0000503e4c75ba943148f18d941e"
+//const serviceUUID ="18ee";
+const serviceUUID="713d0000503e4c75ba943148f18d941e"
 //const serviceUUID ="723d0000503e4c75ba943148f18d941e";
 let win;
 
@@ -19,7 +19,7 @@ function createWindow() {
   // メインウィンドウに表示するURLを指定します
   win.loadURL(`file://${__dirname}/index.html`);
   // デベロッパーツールの起動
-  win.webContents.openDevTools();
+  //win.webContents.openDevTools();
   // メインウィンドウが閉じられたときの処理
   win.on('closed', () => {
     win = null;
